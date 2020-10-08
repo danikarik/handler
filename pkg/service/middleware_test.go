@@ -104,3 +104,46 @@ func TestAllowedContentType(t *testing.T) {
 		})
 	}
 }
+
+func TestRateLimit(t *testing.T) {
+	testCases := []struct {
+		Name       string
+		Count      int
+		Burst      int
+		StatusCode int
+	}{
+		{
+			Name:       "Exceeded",
+			Count:      5,
+			Burst:      3,
+			StatusCode: http.StatusTooManyRequests,
+		},
+		{
+			Name:       "OK",
+			Count:      5,
+			Burst:      100,
+			StatusCode: http.StatusOK,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.Name, func(t *testing.T) {
+			ts := httptest.NewServer(service.New(service.WithRateBurst(tc.Burst)))
+			defer ts.Close()
+
+			statusCode := 0
+
+			for i := 0; i < tc.Count; i++ {
+				resp, err := ts.Client().Post(ts.URL, "application/json", nil)
+				if err != nil {
+					log.Fatalf("got error: %v", err)
+				}
+				statusCode = resp.StatusCode
+			}
+
+			if statusCode != tc.StatusCode {
+				log.Fatalf("got: %v, expected: %v", statusCode, tc.StatusCode)
+			}
+		})
+	}
+}
