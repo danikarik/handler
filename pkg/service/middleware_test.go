@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/danikarik/handler/pkg/service"
@@ -47,7 +48,7 @@ func TestAllowedMethod(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.Name, func(t *testing.T) {
-			req, err := http.NewRequest(tc.Method, ts.URL, nil)
+			req, err := http.NewRequest(tc.Method, ts.URL, strings.NewReader(`[]`))
 			if err != nil {
 				log.Fatalf("got error: %v", err)
 			}
@@ -88,7 +89,7 @@ func TestAllowedContentType(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.Name, func(t *testing.T) {
-			req, err := http.NewRequest(tc.Method, ts.URL, nil)
+			req, err := http.NewRequest(tc.Method, ts.URL, strings.NewReader(`[]`))
 			if err != nil {
 				log.Fatalf("got error: %v", err)
 			}
@@ -134,7 +135,7 @@ func TestRateLimit(t *testing.T) {
 			statusCode := 0
 
 			for i := 0; i < tc.Count; i++ {
-				resp, err := ts.Client().Post(ts.URL, "application/json", nil)
+				resp, err := ts.Client().Post(ts.URL, "application/json", strings.NewReader(`[]`))
 				if err != nil {
 					log.Fatalf("got error: %v", err)
 				}

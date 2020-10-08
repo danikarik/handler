@@ -9,7 +9,7 @@ import (
 func allowedMethod(method string, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != method {
-			http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+			httpError(w, http.StatusMethodNotAllowed)
 			return
 		}
 
@@ -20,7 +20,7 @@ func allowedMethod(method string, next http.Handler) http.Handler {
 func allowContentType(contentType string, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Content-Type") != contentType {
-			http.Error(w, http.StatusText(http.StatusNotAcceptable), http.StatusNotAcceptable)
+			httpError(w, http.StatusNotAcceptable)
 			return
 		}
 
@@ -31,7 +31,7 @@ func allowContentType(contentType string, next http.Handler) http.Handler {
 func rateLimit(limiter *rate.Limiter, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !limiter.Allow() {
-			http.Error(w, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
+			httpError(w, http.StatusTooManyRequests)
 			return
 		}
 
