@@ -6,11 +6,16 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
+	"sync"
 	"time"
 )
 
-const _defaultTimeout = 1 * time.Second
+const (
+	_defaultTimeout     = 1 * time.Second
+	_defaultWorkerCount = 4
+)
 
 type urls []string
 
@@ -24,24 +29,62 @@ type payload struct {
 }
 
 func urlHandler(w http.ResponseWriter, r *http.Request) {
-	body, err := readRequest(r)
+	urls, err := readRequest(r)
 	if err != nil {
 		httpError(w, http.StatusBadRequest)
 		return
 	}
 
-	response := make([]payload, len(body))
+	var (
+		pool = make(chan struct{}, _defaultWorkerCount)
+		done = make(chan payload, len(urls))
+	)
 
-	for i, url := range body {
-		payload, err := visitURL(r.Context(), url)
-		if err != nil {
-			httpError(w, http.StatusBadRequest)
-			return
-		}
-		response[i] = *payload
+	var (
+		exit = make(chan struct{})
+		errC = make(chan error)
+	)
+
+	var wg sync.WaitGroup
+
+	for _, url := range urls {
+		wg.Add(1)
+		go func(url string) {
+			defer wg.Done()
+			pool <- struct{}{}
+
+			// Visit page.
+			payload, err := visitURL(r.Context(), url)
+			if err != nil {
+				errC <- err
+			} else {
+				done <- *payload
+			}
+
+			<-pool
+		}(url)
 	}
 
-	sendResponse(w, response)
+	go func() {
+		wg.Wait()
+		close(done)
+		close(exit)
+	}()
+
+	select {
+	case <-exit:
+		response := make([]payload, 0)
+		for resp := range done {
+			response = append(response, resp)
+		}
+		sendResponse(w, response)
+	case err := <-errC:
+		log.Println(err)
+		httpError(w, http.StatusBadRequest)
+	case <-r.Context().Done():
+		log.Println("context done")
+		httpError(w, http.StatusBadRequest)
+	}
 }
 
 func readRequest(r *http.Request) (urls, error) {
