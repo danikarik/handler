@@ -4,9 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
+	"time"
 )
+
+const _defaultTimeout = 1 * time.Second
 
 type urls []string
 
@@ -70,7 +74,15 @@ func sendResponse(w http.ResponseWriter, r []payload) error {
 }
 
 func visitURL(ctx context.Context, url string) (*payload, error) {
-	resp, err := http.Get(url)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Println("visiting " + url)
+
+	client := &http.Client{Timeout: _defaultTimeout}
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}

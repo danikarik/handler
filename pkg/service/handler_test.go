@@ -21,7 +21,7 @@ func TestUrlHandlerRequest(t *testing.T) {
 	}{
 		{
 			Name:       "OK",
-			Body:       `["https://google.com"]`,
+			Body:       `["https://kaspi.kz"]`,
 			StatusCode: http.StatusOK,
 		},
 		{
