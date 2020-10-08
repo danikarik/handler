@@ -2,14 +2,13 @@ package service
 
 import (
 	"net/http"
-	"time"
 )
 
 // Service holds application handlers.
-type Service struct{ srv *http.Server }
+type Service struct{ handler http.Handler }
 
 // New creates a new instance of `Service`.
-func New(addr string) *Service {
+func New() *Service {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", urlHandler)
 
@@ -19,17 +18,9 @@ func New(addr string) *Service {
 	// Allow only JSON content type.
 	handler = allowContentType("application/json", handler)
 
-	return &Service{
-		srv: &http.Server{
-			Addr:         addr,
-			Handler:      handler,
-			ReadTimeout:  10 * time.Second,
-			WriteTimeout: 10 * time.Second,
-		},
-	}
+	return &Service{handler}
 }
 
-// Start runs http server.
-func (s *Service) Start() error {
-	return s.srv.ListenAndServe()
+func (s *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	s.handler.ServeHTTP(w, r)
 }

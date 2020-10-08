@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
@@ -8,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/danikarik/handler/pkg/service"
 )
@@ -22,7 +24,12 @@ func main() {
 	}
 
 	var (
-		srv  = service.New(*addr)
+		srv = &http.Server{
+			Addr:         *addr,
+			Handler:      service.New(),
+			ReadTimeout:  10 * time.Second,
+			WriteTimeout: 10 * time.Second,
+		}
 		errC = make(chan error, 1)
 	)
 
@@ -34,12 +41,18 @@ func main() {
 
 	go func() {
 		log.Println("start listening on: " + *addr)
-		errC <- srv.Start()
+		errC <- srv.ListenAndServe()
 	}()
 
-	if err := <-errC; err == http.ErrServerClosed {
-		log.Println("shutting down server ...")
-	} else {
-		log.Fatal(err)
+	<-errC
+
+	fmt.Println("")
+	log.Println("shutting down server ...")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Fatalf("shutdown failed: %v", err)
 	}
 }
